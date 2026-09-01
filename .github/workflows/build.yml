@@ -32,7 +32,7 @@ jobs:
             build/bin/tic80.exe
             build/bin/*.dll
 
-      - name: Build Pro
+      - name: Build Pro # builds pro
         shell: cmd
         run: |
           cd build
