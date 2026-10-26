@@ -52,12 +52,11 @@ public class TICDocumentsProvider extends DocumentsProvider {
     {
         Log.v(TAG, "onCreate");
 
-        /* 
-           The function SDL_AndroidGetExternalStoragePath() uses
-           Context::getExternalFilesDir() to get the base directory of TIC-80.
-           When we change it, we also should fix below.
-         */
-        mBaseDir = getContext().getExternalFilesDir(null);
+        mBaseDir = TIC.getUserDirectory(getContext());
+        if (mBaseDir == null || (!mBaseDir.isDirectory() && !mBaseDir.mkdirs())) {
+            Log.e(TAG, "Could not access TIC-80 user directory");
+            return false;
+        }
 
         return true;
     }

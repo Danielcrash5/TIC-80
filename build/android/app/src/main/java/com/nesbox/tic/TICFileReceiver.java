@@ -4,11 +4,9 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
-import android.provider.MediaStore;
 import android.util.Log;
 
 import java.io.File;
@@ -19,7 +17,6 @@ import java.io.OutputStream;
 
 public class TICFileReceiver extends Activity {
     private final static String TAG = "TICFileReceiver";
-    private final static String UserDirName = "TIC-80";
     private static File UserDirectory;
 
     @Override
@@ -28,66 +25,56 @@ public class TICFileReceiver extends Activity {
         super.onStart();
         Log.v(TAG, "onStart");
 
-        /*
-           The function SDL_AndroidGetExternalStoragePath() uses
-           Context::getExternalFilesDir() to get the base directory of TIC-80.
-           When we change it, we also should fix below.
-         */
-        final File baseDir = getApplicationContext().getExternalFilesDir(null);
-        UserDirectory = new File(baseDir, UserDirName);
+        UserDirectory = TIC.getUserDirectory(getApplicationContext());
+        if (UserDirectory == null) {
+            showResult(false, null);
+            return;
+        }
+        if (!UserDirectory.isDirectory() && !UserDirectory.mkdirs()) {
+            showResult(false, null);
+            return;
+        }
 
         final Intent intent = getIntent();
         if (intent == null) return;
         final String action = intent.getAction();
         final String type = intent.getType();
 
-        if (action.equals(Intent.ACTION_SEND) && type != null) {
+        if (Intent.ACTION_SEND.equals(action) && type != null) {
             Log.v(TAG, "received intent of type " + type);
             Uri fileUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
             if (fileUri != null) {
-                DialogInterface.OnClickListener listener = new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        TICFileReceiver.this.finish();
-                    }
-                };
                 final String fileName = SaveFile(fileUri);
-                AlertDialog.Builder builder = new AlertDialog.Builder(this)
-                        .setTitle("TIC-80")
-                        .setPositiveButton("OK", listener);
-                if (fileName != null)
-                    builder.setMessage("File " + fileName + " is saved to user home directory.");
-                else
-                    builder.setMessage("Failed to save file.");
-                builder.create().show();
+                showResult(fileName != null, fileName);
+            } else {
+                showResult(false, null);
             }
         }
     }
 
+    private void showResult(boolean succeeded, String fileName) {
+        String message = succeeded
+                ? getString(R.string.file_saved_message, fileName, UserDirectory)
+                : getString(R.string.file_save_error);
+        new AlertDialog.Builder(this)
+                .setTitle("TIC-80")
+                .setMessage(message)
+                .setPositiveButton("OK", (dialog, which) -> finish())
+                .setOnCancelListener(dialog -> finish())
+                .show();
+    }
+
     private String SaveFile(Uri uri) {
-        final Context context = getApplicationContext();
-        final String scheme = uri.getScheme();
-
-        String path = null;
-        if ("file".equals(scheme)) {
-            path = uri.getPath();
-        } else if("content".equals(scheme)) {
-            ContentResolver contentResolver = context.getContentResolver();
-            Cursor cursor = contentResolver.query(uri, new String[] { MediaStore.MediaColumns.DATA }, null, null, null);
-            if (cursor != null) {
-                cursor.moveToFirst();
-                path = cursor.getString(0);
-                cursor.close();
-            }
-        }
-        if (path == null) return null;
-        final File srcFile = new File(path);
-
-        final String baseFileName = srcFile.getName();
+        String baseFileName = getDisplayName(uri);
+        if (baseFileName == null || baseFileName.isEmpty()) baseFileName = "cart.tic";
+        baseFileName = new File(baseFileName.replace('\\', '/')).getName();
         File dstFile = new File(UserDirectory, baseFileName);
         int noConflictIndex = 1;
+        int extensionIndex = baseFileName.lastIndexOf('.');
+        String stem = extensionIndex > 0 ? baseFileName.substring(0, extensionIndex) : baseFileName;
+        String extension = extensionIndex > 0 ? baseFileName.substring(extensionIndex) : "";
         while (dstFile.exists())
-            dstFile = new File(UserDirectory, baseFileName + "_" + noConflictIndex++);
+            dstFile = new File(UserDirectory, stem + "_" + noConflictIndex++ + extension);
         if (Copy(uri, dstFile))
             return dstFile.getName();
         else
@@ -98,6 +85,10 @@ public class TICFileReceiver extends Activity {
         final int CopyBufferLength = 1024;
         ContentResolver resolver = getApplicationContext().getContentResolver();
         try (InputStream in = resolver.openInputStream(src)) {
+            if (in == null) {
+                Log.e(TAG, "Could not open shared file stream: " + src);
+                return false;
+            }
             try (OutputStream out = new FileOutputStream(dst)) {
                 // Transfer bytes from in to out
                 byte[] buf = new byte[CopyBufferLength];
@@ -112,5 +103,19 @@ public class TICFileReceiver extends Activity {
         }
         Log.v(TAG, "Saved file to " + dst.getPath());
         return true;
+    }
+
+    private String getDisplayName(Uri uri) {
+        try (Cursor cursor = getContentResolver().query(
+                uri, new String[] { android.provider.OpenableColumns.DISPLAY_NAME },
+                null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                if (nameIndex >= 0) return cursor.getString(nameIndex);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Could not read shared file name", e);
+        }
+        return null;
     }
 }

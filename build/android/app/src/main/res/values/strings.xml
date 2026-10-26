@@ -1,4 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">TIC-80</string>
+    <string name="storage_access_title">TIC-80 storage access</string>
+    <string name="storage_access_message">TIC-80 stores carts and editable data in Documents/TIC-80. Allow the All files access permission in Android settings to use this shared folder.</string>
+    <string name="storage_access_settings">Open settings</string>
+    <string name="storage_access_exit">Exit</string>
+    <string name="storage_error_title">Storage error</string>
+    <string name="storage_error_message">Could not create or access the TIC-80 folder: %1$s</string>
+    <string name="storage_settings_error">Android could not open the all-files access settings for TIC-80.</string>
+    <string name="storage_migration_progress">Copying your existing TIC-80 carts into Documents/TIC-80…</string>
+    <string name="storage_migration_title">Existing TIC-80 files</string>
+    <string name="storage_migration_error">Some old files could not be copied: %1$s. The originals are still in the old folder.</string>
+    <string name="storage_migration_conflicts">%1$d files already existed in Documents/TIC-80 and were left unchanged. Their originals remain in the old folder.</string>
+    <string name="storage_migration_continue">Continue</string>
+    <string name="file_saved_message">File %1$s was saved in %2$s.</string>
+    <string name="file_save_error">Could not save the shared file in the TIC-80 folder.</string>
 </resources>
