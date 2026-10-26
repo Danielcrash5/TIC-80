@@ -93,7 +93,7 @@ public class TIC extends SDLActivity
         File temporary = File.createTempFile(".tic80-migrate-", ".tmp", parent);
         try {
             try (InputStream input = new FileInputStream(source);
-                 OutputStream output = new FileOutputStream(temporary)) {
+                FileOutputStream output = new FileOutputStream(temporary)) {
                 byte[] buffer = new byte[8192];
                 int count;
                 while ((count = input.read(buffer)) != -1) {
