@@ -241,14 +241,29 @@ if(BUILD_SDL)
         configure_file("${PROJECT_SOURCE_DIR}/build/linux/tic80.desktop.in" "${PROJECT_SOURCE_DIR}/build/linux/tic80.desktop")
 
         install(TARGETS ${TIC80_TARGET} DESTINATION bin)
+        set_target_properties(${TIC80_TARGET} PROPERTIES
+            INSTALL_RPATH "$ORIGIN/../lib/tic80")
+        install(DIRECTORY "${CMAKE_BINARY_DIR}/bin/"
+            DESTINATION lib/tic80
+            FILES_MATCHING
+            PATTERN "*.so"
+            PATTERN "*.so.*")
 
         SET(TIC80_DESKTOP_DIR     "share/applications/")
         SET(TIC80_MIME_DIR        "share/mime/packages/")
-        SET(TIC80_PIXMAPS_DIR     "share/icons/")
+        SET(TIC80_PIXMAPS_DIR     "share/pixmaps/")
 
         install (FILES ${PROJECT_SOURCE_DIR}/build/linux/tic80.desktop DESTINATION ${TIC80_DESKTOP_DIR})
         install (FILES ${PROJECT_SOURCE_DIR}/build/linux/tic80.xml DESTINATION ${TIC80_MIME_DIR})
         install (FILES ${PROJECT_SOURCE_DIR}/build/linux/tic80.png DESTINATION ${TIC80_PIXMAPS_DIR})
+
+    elseif(WIN32)
+
+        install(TARGETS ${TIC80_TARGET} RUNTIME DESTINATION bin)
+        install(DIRECTORY "${CMAKE_BINARY_DIR}/bin/"
+            DESTINATION bin
+            FILES_MATCHING
+            PATTERN "*.dll")
 
     endif()
 endif()

@@ -24,6 +24,22 @@ jobs:
           cmake -G "Visual Studio 17 2022" -DBUILD_SDLGPU=On -DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_PRO=On -DBUILD_WITH_ALL=ON ..
           cmake --build . --config MinSizeRel --parallel
 
+      - name: Install NSIS
+        run: choco install nsis --yes --no-progress
+
+      - name: Build Windows installer
+        run: cmake --build build --config MinSizeRel --target package
+
+      - name: Stage Windows installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release-assets | Out-Null
+          $installer = Get-ChildItem build -Filter "TIC-80-*-windows-x64.exe" | Select-Object -First 1
+          if ($null -eq $installer) {
+            throw "CPack did not produce the Windows installer."
+          }
+          Copy-Item $installer.FullName release-assets/tic80-windows-setup.exe
+
       - name: Deploy
         uses: actions/upload-artifact@v6
         with:
@@ -31,6 +47,12 @@ jobs:
           path: |
             build/bin/tic80.exe
             build/bin/*.dll
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v6
+        with:
+          name: "tic80-windows-installer"
+          path: release-assets/tic80-windows-setup.exe
 
   # === Windows MinGW-64 ===
   windows-mingw:
@@ -83,7 +105,7 @@ jobs:
       - name: Install
         run: |
           sudo apt-get update
-          sudo apt-get install gcc-12 g++-12 libglu1-mesa-dev libasound2-dev libpulse-dev libaudio-dev libsamplerate0-dev libcurl4-openssl-dev -y
+          sudo apt-get install gcc-12 g++-12 libglu1-mesa-dev libasound2-dev libpulse-dev libaudio-dev libsamplerate0-dev libcurl4-openssl-dev dpkg-dev -y
           sudo ln -s -f /usr/bin/gcc-12 /usr/bin/gcc
           sudo ln -s -f /usr/bin/g++-12 /usr/bin/g++
 
@@ -93,6 +115,9 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_SDLGPU=On -DBUILD_PRO=On -DBUILD_WITH_ALL=ON ..
           cmake --build . --config MinSizeRel --parallel
 
+      - name: Build Linux installer
+        run: cmake --build build --config MinSizeRel --target package
+
       - name: Deploy
         uses: actions/upload-artifact@v6
         with:
@@ -100,6 +125,12 @@ jobs:
           path: |
             build/bin/tic80
             build/bin/*.so
+
+      - name: Upload Linux installer
+        uses: actions/upload-artifact@v6
+        with:
+          name: "tic80-linux-amd64-installer"
+          path: build/tic80.deb
 
   # === Ubuntu-arm64 ===
   linux-arm64-gcc12-glibc235:
@@ -118,7 +149,7 @@ jobs:
       - name: Install
         run: |
           sudo apt-get update
-          sudo apt-get install gcc-12 g++-12 libglu1-mesa-dev libasound2-dev libpulse-dev libaudio-dev libsamplerate0-dev libcurl4-openssl-dev -y
+          sudo apt-get install gcc-12 g++-12 libglu1-mesa-dev libasound2-dev libpulse-dev libaudio-dev libsamplerate0-dev libcurl4-openssl-dev dpkg-dev -y
           sudo ln -s -f /usr/bin/gcc-12 /usr/bin/gcc
           sudo ln -s -f /usr/bin/g++-12 /usr/bin/g++
 
@@ -128,6 +159,9 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_SDLGPU=On -DBUILD_PRO=On -DBUILD_WITH_ALL=ON ..
           cmake --build . --config MinSizeRel --parallel
 
+      - name: Build Linux installer
+        run: cmake --build build --config MinSizeRel --target package
+
       - name: Deploy
         uses: actions/upload-artifact@v6
         with:
@@ -135,6 +169,12 @@ jobs:
           path: |
             build/bin/tic80
             build/bin/*.so
+
+      - name: Upload Linux installer
+        uses: actions/upload-artifact@v6
+        with:
+          name: "tic80-linux-arm64-installer"
+          path: build/tic80.deb
 
   # === Ubuntu gcc14 ===
   linux-gcc14-glibc239:
@@ -285,6 +325,7 @@ jobs:
   # === AUTOMATISCHES RELEASE ERSTELLEN ===
   create-release:
     needs: [windows, linux-gcc12-glibc235, linux-arm64-gcc12-glibc235, linux-gcc14-glibc239, android]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -307,6 +348,9 @@ jobs:
           if [ -d "tic80-windows" ]; then
             zip -r ../release-files/tic80-windows-pro.zip tic80-windows/
           fi
+          cp tic80-windows-installer/tic80-windows-setup.exe ../release-files/
+          cp tic80-linux-amd64-installer/tic80.deb ../release-files/tic80-linux-amd64.deb
+          cp tic80-linux-arm64-installer/tic80.deb ../release-files/tic80-linux-arm64.deb
           
           # Linux-Versionen zippen
           if [ -d "tic80-linux-gcc14" ]; then zip -r ../release-files/tic80-linux-gcc14-pro.zip tic80-linux-gcc14/; fi
@@ -323,7 +367,7 @@ jobs:
         with:
           tag_name: "build-${{ github.sha }}"
           name: "TIC-80 Pro Build (${{ github.sha }})"
-          body: "Automatisierter Pro-Build für Windows, Linux und Android."
+          body: "Automated TIC-80 Pro build for Windows, Linux, and Android. Includes a Windows setup installer and Debian packages for Linux x86-64 and ARM64."
           draft: false
           prerelease: false
           files: |

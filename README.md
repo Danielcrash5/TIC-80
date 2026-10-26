@@ -71,6 +71,13 @@ To make a retro styled game, the whole process of creation and execution takes p
 
 ## Stable Builds
 You can download compiled versions for the major operating systems directly from our [Releases](https://github.com/nesbox/TIC-80/releases) page.
+Automated releases from the `main` branch also include a Windows setup program
+(`tic80-windows-setup.exe`) and Linux Debian packages for x86-64 and ARM64.
+The Windows installer adds TIC-80 to the Start menu and provides an uninstaller.
+It also associates `.tic` cartridges with TIC-80.
+On Debian- and Ubuntu-based systems, install the matching `.deb` package with
+your package manager; it installs the launcher, desktop entry, cartridge
+file-type association, icon, and required bundled TIC-80 libraries.
 
 ## Nightly Builds
 Can be downloaded from official [nightly.link](https://nightly.link/nesbox/TIC-80/workflows/build/main) page or from the [Github Actions](https://github.com/nesbox/TIC-80/actions?query=branch%3Amain) page.
