@@ -327,7 +327,12 @@ jobs:
   # === AUTOMATISCHES RELEASE ERSTELLEN ===
   create-release:
     needs: [windows, linux-gcc12-glibc235, linux-arm64-gcc12-glibc235, linux-gcc14-glibc239, android]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: >-
+      github.ref == 'refs/heads/main' &&
+      (
+        github.event_name == 'push' ||
+        github.event_name == 'workflow_dispatch'
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: write
