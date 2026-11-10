@@ -1,0 +1,87 @@
+
+name: Sync Upstream TIC-80
+
+on:
+  schedule:
+    # Einmal pro Stunde prüfen
+    - cron: "23 * * * *"
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Fork
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Get latest upstream release
+        id: upstream
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=$(gh api repos/nesbox/TIC-80/releases/latest --jq .tag_name)
+
+          if [ -z "$TAG" ]; then
+            echo "Could not determine latest upstream release."
+            exit 1
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Latest upstream release: $TAG"
+
+      - name: Synchronize upstream
+        id: sync
+        env:
+          UPSTREAM_TAG: ${{ steps.upstream.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git remote add upstream https://github.com/nesbox/TIC-80.git
+          git fetch upstream --tags --prune
+
+          CURRENT_TAG=$(cat .github/upstream-version 2>/dev/null || true)
+
+          if [ "$CURRENT_TAG" = "$UPSTREAM_TAG" ]; then
+            echo "Already synchronized with $UPSTREAM_TAG"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Synchronizing upstream release: $UPSTREAM_TAG"
+
+          # Upstream-Release in den Fork integrieren
+          git merge --no-edit "$UPSTREAM_TAG"
+
+          # Version dokumentieren
+          mkdir -p .github
+          echo "$UPSTREAM_TAG" > .github/upstream-version
+
+          git add .github/upstream-version
+          git commit -m "chore: sync TIC-80 upstream $UPSTREAM_TAG"
+
+          # Änderungen in den Fork pushen
+          git push origin HEAD:main
+
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Start existing build workflow
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run build.yml --ref main
