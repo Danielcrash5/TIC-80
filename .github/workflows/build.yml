@@ -325,9 +325,9 @@ jobs:
           path: build/android/app/build/outputs/apk/release/*.apk
 
   # === AUTOMATISCHES RELEASE ERSTELLEN ===
-  create-release:
+    create-release:
     needs: [windows, linux-gcc12-glibc235, linux-arm64-gcc12-glibc235, linux-gcc14-glibc239, android]
-        if: >-
+    if: >-
       github.ref == 'refs/heads/main' &&
       (
         github.event_name == 'push' ||
